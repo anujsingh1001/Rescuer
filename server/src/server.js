@@ -69,7 +69,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
     await client.query('COMMIT');
     res.status(201).json({ message: role === 'NGO' ? 'NGO registered. Your account is pending admin verification.' : 'Registration successful', user, ngo, token: signToken(user) });
-  } } catch (e) {
+  }  catch (e) {
     console.error('Registration failed:', e);
 
     await client.query('ROLLBACK');
