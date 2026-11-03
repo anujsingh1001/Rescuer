@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -7,7 +8,16 @@ import { Server } from 'socket.io';
 import bcrypt from 'bcryptjs';
 import { pool, checkDb } from './db.js';
 import { authenticate, allow, signToken } from './auth.js';
+async function initializeDatabase() {
+  const schema = await readFile(
+    new URL('../database/init.sql', import.meta.url),
+    'utf8'
+  );
 
+  await pool.query(schema);
+
+  console.log('Database schema initialized successfully');
+}
 const app = express();
 const httpServer = http.createServer(app);
 const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map(s => s.trim());
@@ -59,10 +69,19 @@ app.post('/api/auth/register', async (req, res) => {
     }
     await client.query('COMMIT');
     res.status(201).json({ message: role === 'NGO' ? 'NGO registered. Your account is pending admin verification.' : 'Registration successful', user, ngo, token: signToken(user) });
-  } catch (e) {
+  } } catch (e) {
+    console.error('Registration failed:', e);
+
     await client.query('ROLLBACK');
-    res.status(e.code === '23505' ? 409 : 500).json({ message: e.code === '23505' ? 'Email or phone already registered' : 'Registration failed' });
-  } finally { client.release(); }
+
+    res.status(e.code === '23505' ? 409 : 500).json({
+      message: e.code === '23505'
+        ? 'Email or phone already registered'
+        : 'Registration failed'
+    });
+} finally {
+    client.release();
+}
 });
 
 app.post('/api/auth/login', async (req, res) => {
