@@ -10,7 +10,7 @@ import { pool, checkDb } from './db.js';
 import { authenticate, allow, signToken } from './auth.js';
 async function initializeDatabase() {
  const schema = await readFile(
-  new URL('../database/init.sql', import.meta.url),
+  new URL('../../database/init.sql', import.meta.url),
   'utf8'
 );
 
