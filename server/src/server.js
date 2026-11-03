@@ -204,7 +204,15 @@ app.use((err,_req,res,_next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-checkDb().then(() => httpServer.listen(PORT, () => console.log(`API listening on ${PORT}`))).catch(err => {
-  console.error('Could not connect to database', err);
-  process.exit(1);
-});
+
+initializeDatabase()
+  .then(() => checkDb())
+  .then(() => {
+    httpServer.listen(PORT, () => {
+      console.log(`API listening on ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Database initialization failed:', err);
+    process.exit(1);
+  });
