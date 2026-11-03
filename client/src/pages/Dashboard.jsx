@@ -1,0 +1,25 @@
+import { useEffect,useState } from 'react';
+import { Link } from 'react-router-dom';
+import api from '../services/api';
+import { connectSocket } from '../services/socket';
+import { useAuth } from '../context/AuthContext';
+const label=s=>s?.replaceAll('_',' ');
+export function CitizenDashboard(){
+ const [reports,setReports]=useState([]);const [error,setError]=useState('');
+ useEffect(()=>{api.get('/reports/mine').then(r=>setReports(r.data.reports)).catch(e=>setError(e.response?.data?.message||'Could not load reports'));},[]);
+ return <div className="page"><div className="page-head"><div><span className="eyebrow">CITIZEN DASHBOARD</span><h1>Your rescue requests</h1><p className="muted">Follow the progress of the cases you have reported.</p></div><Link className="btn primary" to="/report">+ New report</Link></div>{error&&<div className="error">{error}</div>}<div className="report-list">{reports.map(r=><article className="report-card" key={r.id}><div><span className="tag">{r.animal_type} • {r.emergency_type}</span><h3>{r.city}, {r.state}</h3><p>{r.description}</p><small>{new Date(r.created_at).toLocaleString()}</small></div><strong className={`status ${r.status.toLowerCase()}`}>{label(r.status)}</strong></article>)}{!reports.length&&!error&&<div className="empty">No reports yet. If you see an animal in need, <Link to="/report">submit a rescue request</Link>.</div>}</div></div>;
+}
+export function NgoDashboard(){
+ const [reports,setReports]=useState([]);const [error,setError]=useState('');const [notice,setNotice]=useState('');
+ const load=()=>api.get('/ngo/reports').then(r=>setReports(r.data.reports)).catch(e=>setError(e.response?.data?.message||'Could not load requests'));
+ useEffect(()=>{load();const token=localStorage.getItem('arn_token');const socket=connectSocket(token);socket.on('rescue:new',payload=>{setNotice(`New request: ${payload.report.animal_type} in ${payload.report.city}`);load();});return()=>socket.disconnect();},[]);
+ const update=async(id,status)=>{try{await api.patch(`/ngo/reports/${id}/status`,{status});setNotice('Request status updated');load();}catch(e){setError(e.response?.data?.message||'Update failed');}};
+ return <div className="page"><span className="eyebrow">NGO PARTNER DASHBOARD</span><h1>Rescue requests</h1><p className="muted">New requests in your registered city appear here. Keep this page open to receive live alerts.</p>{notice&&<div className="success">{notice}</div>}{error&&<div className="error">{error}</div>}<div className="report-list">{reports.map(r=><article className="report-card" key={r.id}><div><span className="tag">{r.animal_type} • {r.emergency_type}</span><h3>{r.city}, {r.state}</h3><p>{r.description}</p><p><b>Address:</b> {r.address}</p><p><b>Citizen:</b> {r.citizen_name} • {r.citizen_phone}</p><small>{new Date(r.created_at).toLocaleString()}</small></div><div className="actions"><strong className="status">{label(r.status)}</strong>{r.status==='PENDING'&&<button className="btn primary" onClick={()=>update(r.id,'ACCEPTED')}>Accept request</button>}{r.status==='ACCEPTED'&&<button className="btn primary" onClick={()=>update(r.id,'RESCUE_IN_PROGRESS')}>Start rescue</button>}{r.status==='RESCUE_IN_PROGRESS'&&<button className="btn primary" onClick={()=>update(r.id,'TREATMENT_IN_PROGRESS')}>Treatment started</button>}{r.status==='TREATMENT_IN_PROGRESS'&&<button className="btn primary" onClick={()=>update(r.id,'COMPLETED')}>Mark completed</button>}</div></article>)}{!reports.length&&!error&&<div className="empty">No requests available for your registered city.</div>}</div></div>;
+}
+export function PendingApproval(){return <div className="page narrow"><div className="form-card"><span className="eyebrow">NGO REGISTRATION</span><h1>Application received</h1><p>Your NGO profile is pending administrator verification. Once approved, sign in again to access rescue requests.</p><Link to="/" className="btn primary">Back to home</Link></div></div>}
+export function AdminDashboard(){
+ const [ngos,setNgos]=useState([]);const [error,setError]=useState('');const load=()=>api.get('/admin/ngos/pending').then(r=>setNgos(r.data.ngos)).catch(e=>setError(e.response?.data?.message||'Could not load NGOs'));
+ useEffect(()=>{load();},[]);
+ const approve=async id=>{try{await api.patch(`/admin/ngos/${id}/approve`);load();}catch(e){setError(e.response?.data?.message||'Approval failed');}};
+ return <div className="page"><span className="eyebrow">ADMIN CONTROL CENTER</span><h1>NGO verification</h1><p className="muted">Review organization details before enabling rescue notifications.</p>{error&&<div className="error">{error}</div>}<div className="report-list">{ngos.map(n=><article className="report-card" key={n.id}><div><h3>{n.organization_name}</h3><p>{n.description}</p><p>{n.city}, {n.state} • {n.address}</p><small>{n.name} • {n.email} • {n.phone}</small></div><button className="btn primary" onClick={()=>approve(n.id)}>Approve NGO</button></article>)}{!ngos.length&&!error&&<div className="empty">No pending NGO applications.</div>}</div></div>;
+}

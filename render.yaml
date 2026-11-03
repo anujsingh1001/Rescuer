@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: animal-rescue-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        sync: false
+      - key: BOOTSTRAP_SECRET
+        generateValue: true

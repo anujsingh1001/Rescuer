@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: animal_rescue_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rescue_admin
+      POSTGRES_PASSWORD: local_dev_password
+      POSTGRES_DB: animal_rescue
+    ports:
+      - "5432:5432"
+    volumes:
+      - rescue_db_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/001-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rescue_admin -d animal_rescue"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  rescue_db_data:
